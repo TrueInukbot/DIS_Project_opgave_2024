@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Search Cars</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="logo">
+                DIKU Car Rental
+            </div>
+            <nav>
+                <ul>
+                    <li><a href="{{ url_for('home') }}">Home</a></li>
+                </ul>
+            </nav>
+            <form method="POST" action="{{ url_for('search') }}">
+                <input type="text" id="location" name="location" placeholder="Location" value="{{ request.form.get('location') }}">
+                <input type="date" id="start_date" name="start_date" placeholder="Start Date" value="{{ request.form.get('start_date') }}">
+                <input type="date" id="end_date" name="end_date" placeholder="End Date" value="{{ request.form.get('end_date') }}">
+                <button type="submit">Search</button>
+            </form>
+        </div>
+    </header>
+
+    <div class="container">
+        {% if cars %}
+            <h2>Available Cars:</h2>
+            <div class="features">
+                <div class="feature-cards">
+                    {% for car in cars %}
+                        <div class="card">
+                            <img src="{{ url_for('static', filename='bilBilleder/bil' ~ car['bilid'] ~ '.jpg') }}" alt="{{ car['maerke'] }} {{ car['model'] }}">
+                            <h3>{{ car['maerke'] }} {{ car['model'] }}</h3>
+                            <p>Brændstoftype: {{ car['braendstoftype'] }}</p>
+                            <p>Hestekraefter: {{ car['hestekraefter'] }}</p>
+                            <p>Stelnummer: {{ car['stelnummer'] }}</p>
+                            <p>Vognnummer: {{ car['vognnummer'] }}</p>
+                            <p>Odometer: {{ car['odometer'] }}</p>
+                            <p>Produktionsaar: {{ car['produktionsaar'] }}</p>
+                            <p>Lokation: {{ car['lokation'] }}</p>
+                            <p>Pris: {{ car['prisPrMaaned'] }}</p>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+    </div>
+
+    <footer>
+        <p>&copy; 2024 DIKU Car Rental. All rights reserved.</p>
+    </footer>
+</body>
+</html>

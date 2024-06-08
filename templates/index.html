@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Car Rental</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header class="navbar navbar-expand-lg navbar-light bg-light">
+        <div class="container">
+            <a class="navbar-brand" href="/">DIKU Car Rental</a>
+            <div class="collapse navbar-collapse">
+                <ul class="navbar-nav ml-auto">
+                    <li class="nav-item"><a class="nav-link" href="/">Home</a></li>
+                </ul>
+            </div>
+        </div>
+    </header>
+    <section class="hero">
+        <div class="container">
+            <h1>Find the Perfect Rental Car</h1>
+            <form action="/search" method="get">
+                <button type="submit">Search</button>
+            </form>
+        </div>
+    </section>
+<section class="features">
+        <div class="container">
+            <h2>Why choose the super fantastik future car rental?</h2>
+            <div class="feature-cards">
+                <div class="card">
+                    <h3>Wide Selection</h3>
+                    <p>Choose from the wildest cars of your wildest dreams that will fit your DIKU needs.</p>
+                </div>
+                <div class="card">
+                    <h3>Best Prices for Students and professors</h3>
+                    <p>Get "the super university deal" on car rentals.</p>
+                </div>
+                <div class="card">
+                    <h3>Convenient Locations outside of campus and other universities</h3>
+                    <p>Find cars available at convenient locations near you.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+    <footer>
+        <div class="container">
+            <p>&copy; 2024 Car Rental.</p>
+        </div>
+    </footer>
+</body>
+</html>
