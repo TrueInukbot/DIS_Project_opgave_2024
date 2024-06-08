@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Car Details</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="logo">
+                DIKU Car Rental
+            </div>
+            <nav>
+                <ul>
+                    <li><a href="{{ url_for('home') }}">Home</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <h1>Car Details</h1>
+
+    <div class="car-details">
+        <img src="{{ url_for('static', filename='images/' + car.billede + '.png') }}" alt="Car Image">
+        <div>
+            <h2>{{ car.maerke }} {{ car.model }}</h2>
+            <p>Model Year: {{ car.produktionsaar }}</p>
+            <p>Odometer: {{ car.odometer }} km</p>
+            <p>Location: {{ car.lokation }}</p>
+            <p>Price: {{ car.price }} kr.</p>
+        </div>
+    </div>
+
+    <h2>Book this Car</h2>
+    <form method="POST" action="{{ url_for('book_car', bilid=car.bilid) }}">
+        <label for="fornavn">First Name:</label>
+        <input type="text" id="fornavn" name="fornavn" required><br>
+
+        <label for="efternavn">Last Name:</label>
+        <input type="text" id="efternavn" name="efternavn" required><br>
+
+        <label for="adresse">Address:</label>
+        <input type="text" id="adresse" name="adresse" required><br>
+
+        <label for="email">Email:</label>
+        <input type="email" id="email" name="email" required><br>
+
+        <label for="telefon">Phone:</label>
+        <input type="text" id="telefon" name="telefon" required><br>
+
+        <button type="submit">Book Now</button>
+    </form>
+</body>
+</html>

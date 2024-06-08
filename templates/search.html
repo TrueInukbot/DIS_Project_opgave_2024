@@ -3,54 +3,49 @@
 <head>
     <meta charset="UTF-8">
     <title>Search Cars</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <header>
+    <header class="navbar navbar-expand-lg navbar-light bg-light">
         <div class="container">
-            <div class="logo">
-                DIKU Car Rental
-            </div>
-            <nav>
-                <ul>
-                    <li><a href="{{ url_for('home') }}">Home</a></li>
-                </ul>
-            </nav>
+            <a class="navbar-brand" href="/">DIKU Car Rental</a>
             <form method="POST" action="{{ url_for('search') }}">
-                <input type="text" id="location" name="location" placeholder="Location" value="{{ request.form.get('location') }}">
+                <select id="location" name="location" placeholder="Location" value="{{ request.form.get('location') }}">
+                    <option value="" disabled selected>Location</option>
+                    <option value="Københavns Universitet" {% if request.form.get('location') == 'Københavns Universitet' %}selected{% endif %}>København Universitet</option>
+                    <option value="Syddansk Universitet" {% if request.form.get('location') == 'Syddansk Universitet' %}selected{% endif %}>Syddansk Universitet</option>
+                    <option value="Aarhus Universitet" {% if request.form.get('location') == 'Aarhus Universitet' %}selected{% endif %}>Aarhus Universitet</option>
+                    <option value="Roskilde Universitet" {% if request.form.get('location') == 'Roskilde Universitet' %}selected{% endif %}>Roskilde Universitet</option>
+                </select>
                 <input type="date" id="start_date" name="start_date" placeholder="Start Date" value="{{ request.form.get('start_date') }}">
                 <input type="date" id="end_date" name="end_date" placeholder="End Date" value="{{ request.form.get('end_date') }}">
                 <button type="submit">Search</button>
-            </form>
+            
         </div>
+        <ul class="navbar-nav ml-auto">
+            <li class="nav-item"><a class="nav-link" href="/">Home</a></li>
+        </ul>
     </header>
+    <h1>Search Results</h1>
 
-    <div class="container">
-        {% if cars %}
-            <h2>Available Cars:</h2>
-            <div class="features">
-                <div class="feature-cards">
-                    {% for car in cars %}
-                        <div class="card">
-                            <img src="{{ url_for('static', filename='bilBilleder/bil' ~ car['bilid'] ~ '.jpg') }}" alt="{{ car['maerke'] }} {{ car['model'] }}">
-                            <h3>{{ car['maerke'] }} {{ car['model'] }}</h3>
-                            <p>Brændstoftype: {{ car['braendstoftype'] }}</p>
-                            <p>Hestekraefter: {{ car['hestekraefter'] }}</p>
-                            <p>Stelnummer: {{ car['stelnummer'] }}</p>
-                            <p>Vognnummer: {{ car['vognnummer'] }}</p>
-                            <p>Odometer: {{ car['odometer'] }}</p>
-                            <p>Produktionsaar: {{ car['produktionsaar'] }}</p>
-                            <p>Lokation: {{ car['lokation'] }}</p>
-                            <p>Pris: {{ car['prisPrMaaned'] }}</p>
-                        </div>
-                    {% endfor %}
+    {% if cars %}
+    <div class="car-container">
+        {% for car in cars %}
+            <div class="car-card" onclick="location.href='{{ url_for('car_details', bilid=car.bilid) }}'">
+                <img src="{{ url_for('static', filename='images/' + car.billede + '.png') }}" alt="Car Image">
+                <div class="car-details">
+                    <h3>{{ car.maerke }} {{ car.model }}</h3>
+                    <p>Model Year: {{ car.produktionsaar }}</p>
+                    <p>Odometer: {{ car.odometer }} km</p>
+                    <p>Location: {{ car.lokation }}</p>
+                    <p>Price: {{ car.price }} kr.</p>
                 </div>
             </div>
-        {% endif %}
+        {% endfor %}
     </div>
-
-    <footer>
-        <p>&copy; 2024 DIKU Car Rental. All rights reserved.</p>
-    </footer>
+{% else %}
+    <p>No cars available for the specified criteria.</p>
+{% endif %}
 </body>
 </html>

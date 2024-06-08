@@ -1,3 +1,5 @@
+CREATE EXTENSION pg_trgm;
+
 CREATE OR REPLACE VIEW available_cars AS
 SELECT 
     b.bilid, 

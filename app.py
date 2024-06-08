@@ -1,12 +1,14 @@
 import logging
 from datetime import datetime
-from sqlalchemy import text
-from flask import Flask, render_template, request
+from sqlalchemy import or_, select, text
+from flask import Flask, render_template, request, redirect, url_for, session
 from flask_sqlalchemy import SQLAlchemy
 from config import Config
+import re
 
 app = Flask(__name__)
 app.config.from_object(Config)
+app.secret_key = 'admin' 
 app.debug = True  # Enable debug mode
 
 db = SQLAlchemy(app)
@@ -28,12 +30,12 @@ class Kunder(db.Model):
 
 class Abonnementer(db.Model):
     __tablename__ = 'abonnementer'
-    abonnementid = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    abonnementerid = db.Column(db.Integer, primary_key=True, autoincrement=True)
     kundeid = db.Column(db.Integer, db.ForeignKey('kunder.kundeid'), nullable=False)
     bilid = db.Column(db.Integer, db.ForeignKey('biler.bilid'), nullable=False)
     startdato = db.Column(db.Date, nullable=False)
     slutdato = db.Column(db.Date, nullable=False)
-    prisprmaaned = db.Column(db.Float, nullable=False)
+    prisPrMaaned = db.Column(db.Float, nullable=False)
 
     def __repr__(self):
         return f'<Abonnementer KundeID: {self.kundeid}, BilID: {self.bilid}>'
@@ -54,6 +56,25 @@ class Biler(db.Model):
 
     def __repr__(self):
         return f'<Bil: model: {self.model}, brændstof: {self.braendstoftype}, mærke: {self.maerke}, BilID: {self.bilid}>'
+
+@app.route('/search_customers', methods=['GET'])
+def search_customers():
+    if 'username' not in session:
+        return redirect(url_for('home'))
+
+    query = request.args.get('query', '')
+    customers = []
+    if query:
+        # Use regular expression for searching
+        customers = Kunder.query.filter(
+            or_(
+                Kunder.fornavn.op('~')(query),
+                Kunder.efternavn.op('~')(query),
+                Kunder.email.op('~')(query)
+            )
+        ).all()
+
+    return render_template('user.html', customers=customers)
 
 @app.route('/')
 def home():
@@ -96,7 +117,7 @@ def search():
                 """
                 results = db.session.execute(text(sql), {'location': f'%{location}%', 'end_date': end_date, 'start_date': start_date}).fetchall()
 
-                available_cars = [dict(row) for row in results]
+                available_cars = [dict(row._mapping) for row in results]
 
                 logging.debug(f"Available cars: {available_cars}")
 
@@ -106,25 +127,52 @@ def search():
         return render_template('error.html', error=str(e))
     
     return render_template('search.html', cars=[])
-@app.route('/test_db')
-def test_db():
-    try:
-        # Perform a simple query to test the database connection
-        result = db.session.execute(text('SELECT 1')).scalar()
-        if result == 1:
-            return "Database connection is working!", 200
-        else:
-            return "Unexpected result from the database.", 500
-    except Exception as e:
-        # Log the error and return a failure message
-        logging.error(f"Error testing database connection: {e}")
-        return f"Database connection failed: {e}", 500
+
+@app.route('/login', methods=['POST'])
+def login():
+    username = request.form['username']
+    password = request.form['password']
+    if username == 'admin' and password == 'admin':
+        session['username'] = username
+        return redirect(url_for('user'))
+    else:
+        return redirect(url_for('home'))
+
+@app.route('/user')
+def user():
+    if 'username' in session:
+        return render_template('user.html')
+    else:
+        return redirect(url_for('home'))
+    
+@app.route('/car/<int:bilid>')
+def car_details(bilid):
+    car = Biler.query.get(bilid)
+    return render_template('abonnement.html', car=car)
+
+@app.route('/book_car/<int:bilid>', methods=['POST'])
+def book_car(bilid):
+    fornavn = request.form['fornavn']
+    efternavn = request.form['efternavn']
+    adresse = request.form['adresse']
+    email = request.form['email']
+    telefon = request.form['telefon']
+
+    new_user = Kunder(fornavn=fornavn, efternavn=efternavn, adresse=adresse, email=email, telefon=telefon)
+    db.session.add(new_user)
+    db.session.commit()
+
+    start_date = datetime.today().date()  # Adjust start_date as necessary
+    end_date = datetime.today().date()  # Adjust end_date as necessary
+    prisPrMaaned = 3000  # Adjust price as necessary
+
+    new_abonnement = Abonnementer(kundeid=new_user.kundeid, bilid=bilid, startDato=start_date, slutDato=end_date, prisPrMaaned=prisPrMaaned)
+    db.session.add(new_abonnement)
+    db.session.commit()
+
+    return redirect(url_for('home'))
 
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
-        # Run the SQL script to create views
-        with open('sql/create_views.sql') as f:
-            db.session.execute(text(f.read()))
-            db.session.commit()
     app.run(debug=True)
