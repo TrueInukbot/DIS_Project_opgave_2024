@@ -293,3 +293,22 @@ footer p {
     background-color: red;
     color: white;
 }
+form .form-group label {
+    font-weight: bold;
+    color: #00d9ff;
+}
+
+form .form-control {
+    margin-bottom: 15px;
+}
+
+form button.btn {
+    background-color: #00d9ff;
+    color: #fff;
+    border: none;
+}
+
+form button.btn:hover {
+    background-color: #1a1b44;
+    color: #00d9ff;
+}

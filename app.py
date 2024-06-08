@@ -9,7 +9,7 @@ import re
 app = Flask(__name__)
 app.config.from_object(Config)
 app.secret_key = 'admin' 
-app.debug = True  # Enable debug mode
+app.debug = True  
 
 db = SQLAlchemy(app)
 
@@ -30,15 +30,16 @@ class Kunder(db.Model):
 
 class Abonnementer(db.Model):
     __tablename__ = 'abonnementer'
-    abonnementerid = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    abonnementid = db.Column(db.Integer, primary_key=True, autoincrement=True)
     kundeid = db.Column(db.Integer, db.ForeignKey('kunder.kundeid'), nullable=False)
     bilid = db.Column(db.Integer, db.ForeignKey('biler.bilid'), nullable=False)
     startdato = db.Column(db.Date, nullable=False)
     slutdato = db.Column(db.Date, nullable=False)
-    prisPrMaaned = db.Column(db.Float, nullable=False)
+    prisprmaaned = db.Column(db.Integer, nullable=False)
+    maxkm = db.Column(db.Integer)
 
-    def __repr__(self):
-        return f'<Abonnementer KundeID: {self.kundeid}, BilID: {self.bilid}>'
+def __repr__(self):
+        return f'<Abonnementer KundeID: {self.kundeid}, BilID: {self.bilid}, PrisPrMåned: {self.prisprmaaned}>'
 
 class Biler(db.Model):
     __tablename__ = 'biler'
@@ -80,53 +81,82 @@ def search_customers():
 def home():
     return render_template('index.html')
 
-@app.route('/greet', methods=['POST'])
-def greet():
-    fornavn = request.form['fornavn']
-    efternavn = request.form['efternavn']
-    adresse = request.form['adresse']
-    email = request.form['email']
-    telefon = request.form['telefon']
-
-    new_user = Kunder(fornavn=fornavn, efternavn=efternavn, adresse=adresse, email=email, telefon=telefon)
-    db.session.add(new_user)
-    db.session.commit()
-
-    return render_template('greet.html', fornavn=fornavn, efternavn=efternavn, adresse=adresse, email=email, telefon=telefon)
-
 @app.route('/search', methods=['GET', 'POST'])
 def search():
-    try:
-        if request.method == 'POST':
-            location = request.form.get('location')
-            start_date = request.form.get('start_date')
-            end_date = request.form.get('end_date')
+    if request.method == 'POST':
+        location = request.form.get('location')
+        start_date = request.form.get('start_date')
+        end_date = request.form.get('end_date')
 
-            logging.debug(f"Search criteria - Location: {location}, Start Date: {start_date}, End Date: {end_date}")
+        if not start_date or not end_date:
+            flash('Start date and end date are required.')
+            return redirect(url_for('home'))
 
-            if start_date and end_date:
-                start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
-                end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+        try:
+            start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+            end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
 
-                sql = """
-                SELECT bilid, maerke, model, braendstoftype, hestekraefter, stelnummer, 
-                       vognnummer, odometer, produktionsaar, lokation, billede
-                FROM cars_by_location_and_date
-                WHERE lokation ILIKE :location
-                AND (startdato IS NULL OR startdato > :end_date OR slutdato < :start_date)
-                """
-                results = db.session.execute(text(sql), {'location': f'%{location}%', 'end_date': end_date, 'start_date': start_date}).fetchall()
+            results = Biler.query.outerjoin(Abonnementer, Biler.bilid == Abonnementer.bilid).filter(
+                Biler.lokation.ilike(f'%{location}%'),
+                or_(Abonnementer.startdato == None, Abonnementer.startdato > end_date, Abonnementer.slutdato < start_date)
+            ).all()
 
-                available_cars = [dict(row._mapping) for row in results]
+            available_cars = [{'bilid': car.bilid, 'maerke': car.maerke, 'model': car.model, 'braendstoftype': car.braendstoftype,
+                               'hestekraefter': car.hestekraefter, 'stelnummer': car.stelnummer, 'vognnummer': car.vognnummer,
+                               'odometer': car.odometer, 'produktionsaar': car.produktionsaar, 'lokation': car.lokation,
+                               'billede': car.billede} for car in results]
 
-                logging.debug(f"Available cars: {available_cars}")
+            return render_template('search.html', cars=available_cars, location=location, start_date=start_date, end_date=end_date)
+        except ValueError as e:
+            flash(f'Invalid date format: {e}')
+            return redirect(url_for('home'))
 
-                return render_template('search.html', cars=available_cars, location=location, start_date=start_date, end_date=end_date)
-    except Exception as e:
-        logging.exception("An error occurred during the search.")
-        return render_template('error.html', error=str(e))
-    
-    return render_template('search.html', cars=[])
+    # If GET request or no cars found for the criteria, show all cars not currently on a subscription
+    results = Biler.query.outerjoin(Abonnementer, Biler.bilid == Abonnementer.bilid).filter(
+        Abonnementer.bilid == None
+    ).all()
+
+    all_cars = [{'bilid': car.bilid, 'maerke': car.maerke, 'model': car.model, 'braendstoftype': car.braendstoftype,
+                 'hestekraefter': car.hestekraefter, 'stelnummer': car.stelnummer, 'vognnummer': car.vognnummer,
+                 'odometer': car.odometer, 'produktionsaar': car.produktionsaar, 'lokation': car.lokation,
+                 'billede': car.billede} for car in results]
+
+    return render_template('search.html', cars=all_cars)
+
+@app.route('/car_details/<int:bilid>', methods=['GET', 'POST'])
+def car_details(bilid):
+    car = Biler.query.get_or_404(bilid)
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
+
+    if request.method == 'POST':
+        fornavn = request.form.get('fornavn')
+        efternavn = request.form.get('efternavn')
+        adresse = request.form.get('adresse')
+        email = request.form.get('email')
+        telefon = request.form.get('telefon')
+
+        new_user = Kunder(fornavn=fornavn, efternavn=efternavn, adresse=adresse, email=email, telefon=telefon)
+        db.session.add(new_user)
+        db.session.commit()
+
+        start_date = request.form.get('start_date')
+        end_date = request.form.get('end_date')
+        prisprmåned = request.form.get('PrisPrMåned')
+
+        new_abonnement = Abonnementer(
+            kundeid=new_user.kundeid,
+            bilid=bilid,
+            startdato=datetime.strptime(start_date, '%Y-%m-%d').date(),
+            slutdato=datetime.strptime(end_date, '%Y-%m-%d').date(),
+            prispermåned=float(prisprmåned)
+        )
+        db.session.add(new_abonnement)
+        db.session.commit()
+
+        return redirect(url_for('search'))
+
+    return render_template('car_details.html', car=car, start_date=start_date, end_date=end_date)
 
 @app.route('/login', methods=['POST'])
 def login():
@@ -134,45 +164,95 @@ def login():
     password = request.form['password']
     if username == 'admin' and password == 'admin':
         session['username'] = username
-        return redirect(url_for('user'))
+        return redirect(url_for('user_page'))
     else:
+        flash('Invalid credentials')
         return redirect(url_for('home'))
 
 @app.route('/user')
-def user():
-    if 'username' in session:
-        return render_template('user.html')
-    else:
+def user_page():
+    if 'username' not in session:
+        flash('You need to log in first.')
         return redirect(url_for('home'))
-    
-@app.route('/car/<int:bilid>')
-def car_details(bilid):
-    car = Biler.query.get(bilid)
-    return render_template('abonnement.html', car=car)
+
+    search_term = request.args.get('search_term', '')
+
+    # Regex search in PostgreSQL
+    pattern = f"%{search_term}%"
+    customers = Kunder.query.filter(
+        Kunder.fornavn.ilike(pattern) |
+        Kunder.efternavn.ilike(pattern) |
+        Kunder.email.ilike(pattern)
+    ).all()
+
+    return render_template('user.html', customers=customers)
 
 @app.route('/book_car/<int:bilid>', methods=['POST'])
 def book_car(bilid):
-    fornavn = request.form['fornavn']
-    efternavn = request.form['efternavn']
-    adresse = request.form['adresse']
-    email = request.form['email']
-    telefon = request.form['telefon']
+    try:
+        fornavn = request.form.get('fornavn')
+        efternavn = request.form.get('efternavn')
+        adresse = request.form.get('adresse')
+        email = request.form.get('email')
+        telefon = request.form.get('telefon')
+        start_date = request.form.get('start_date')
+        end_date = request.form.get('end_date')
+        prisprmaaned = request.form.get('PrisPerMaaned')
 
-    new_user = Kunder(fornavn=fornavn, efternavn=efternavn, adresse=adresse, email=email, telefon=telefon)
-    db.session.add(new_user)
+        logging.debug(f'fornavn: {fornavn}')
+        logging.debug(f'efternavn: {efternavn}')
+        logging.debug(f'adresse: {adresse}')
+        logging.debug(f'email: {email}')
+        logging.debug(f'telefon: {telefon}')
+        logging.debug(f'start_date: {start_date}')
+        logging.debug(f'end_date: {end_date}')
+        logging.debug(f'prisprmaaned: {prisprmaaned}')
+
+        if not all([fornavn, efternavn, adresse, email, telefon, start_date, end_date, prisprmaaned]):
+            raise ValueError("All fields are required")
+
+        new_user = Kunder(fornavn=fornavn, efternavn=efternavn, adresse=adresse, email=email, telefon=telefon)
+        db.session.add(new_user)
+        db.session.commit()
+
+        new_abonnement = Abonnementer(
+            kundeid=new_user.kundeid,
+            bilid=bilid,
+            startdato=datetime.strptime(start_date, '%Y-%m-%d').date(),
+            slutdato=datetime.strptime(end_date, '%Y-%m-%d').date(),
+            prisprmaaned=int(prisprmaaned)  # Ensure this matches the model definition
+        )
+        db.session.add(new_abonnement)
+        db.session.commit()
+
+        return redirect(url_for('home'))
+    except Exception as e:
+        logging.exception("An error occurred while booking the car.")
+        return redirect(url_for('home'))
+    
+@app.route('/user_details/<int:kundeid>', methods=['GET'])
+def user_details(kundeid):
+    customer = Kunder.query.get_or_404(kundeid)
+    subscriptions = Abonnementer.query.filter_by(kundeid=kundeid).all()
+    return render_template('user_details.html', customer=customer, subscriptions=subscriptions)
+
+@app.route('/delete_customer/<int:kundeid>', methods=['POST'])
+def delete_customer(kundeid):
+    customer = Kunder.query.get_or_404(kundeid)
+    subscriptions = Abonnementer.query.filter_by(kundeid=kundeid).all()
+    for subscription in subscriptions:
+        db.session.delete(subscription)
+    db.session.delete(customer)
     db.session.commit()
+    return redirect(url_for('user_page'))
 
-    start_date = datetime.today().date()  # Adjust start_date as necessary
-    end_date = datetime.today().date()  # Adjust end_date as necessary
-    prisPrMaaned = 3000  # Adjust price as necessary
-
-    new_abonnement = Abonnementer(kundeid=new_user.kundeid, bilid=bilid, startDato=start_date, slutDato=end_date, prisPrMaaned=prisPrMaaned)
-    db.session.add(new_abonnement)
+@app.route('/delete_subscription/<int:abonnementid>', methods=['POST'])
+def delete_subscription(abonnementid):
+    subscription = Abonnementer.query.get_or_404(abonnementid)
+    kundeid = subscription.kundeid
+    db.session.delete(subscription)
     db.session.commit()
-
-    return redirect(url_for('home'))
-
+    return redirect(url_for('user_details', kundeid=kundeid))
+    
 if __name__ == '__main__':
-    with app.app_context():
-        db.create_all()
     app.run(debug=True)

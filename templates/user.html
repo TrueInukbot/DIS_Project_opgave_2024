@@ -28,7 +28,9 @@
             <h3 class="mt-5">Search Results</h3>
             <ul class="list-group">
                 {% for customer in customers %}
-                    <li class="list-group-item">{{ customer.fornavn }} {{ customer.efternavn }} - {{ customer.email }}</li>
+                    <li class="list-group-item">
+                        <a href="{{ url_for('user_details', kundeid=customer.kundeid) }}" class="btn btn-link">{{ customer.fornavn }} {{ customer.efternavn }} - {{ customer.email }}</a>
+                    </li>
                 {% endfor %}
             </ul>
         {% endif %}

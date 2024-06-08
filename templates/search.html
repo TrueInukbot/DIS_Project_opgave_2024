@@ -11,9 +11,9 @@
         <div class="container">
             <a class="navbar-brand" href="/">DIKU Car Rental</a>
             <form method="POST" action="{{ url_for('search') }}">
-                <select id="location" name="location" placeholder="Location" value="{{ request.form.get('location') }}">
+                <select id="location" name="location" placeholder="Location">
                     <option value="" disabled selected>Location</option>
-                    <option value="Københavns Universitet" {% if request.form.get('location') == 'Københavns Universitet' %}selected{% endif %}>København Universitet</option>
+                    <option value="Københavns Universitet" {% if request.form.get('location') == 'Københavns Universitet' %}selected{% endif %}>Københavns Universitet</option>
                     <option value="Syddansk Universitet" {% if request.form.get('location') == 'Syddansk Universitet' %}selected{% endif %}>Syddansk Universitet</option>
                     <option value="Aarhus Universitet" {% if request.form.get('location') == 'Aarhus Universitet' %}selected{% endif %}>Aarhus Universitet</option>
                     <option value="Roskilde Universitet" {% if request.form.get('location') == 'Roskilde Universitet' %}selected{% endif %}>Roskilde Universitet</option>
@@ -21,7 +21,7 @@
                 <input type="date" id="start_date" name="start_date" placeholder="Start Date" value="{{ request.form.get('start_date') }}">
                 <input type="date" id="end_date" name="end_date" placeholder="End Date" value="{{ request.form.get('end_date') }}">
                 <button type="submit">Search</button>
-            
+            </form>
         </div>
         <ul class="navbar-nav ml-auto">
             <li class="nav-item"><a class="nav-link" href="/">Home</a></li>
@@ -32,7 +32,7 @@
     {% if cars %}
     <div class="car-container">
         {% for car in cars %}
-            <div class="car-card" onclick="location.href='{{ url_for('car_details', bilid=car.bilid) }}'">
+            <div class="car-card" onclick="location.href='{{ url_for('car_details', bilid=car.bilid) }}?start_date={{ request.form.get('start_date') }}&end_date={{ request.form.get('end_date') }}'">
                 <img src="{{ url_for('static', filename='images/' + car.billede + '.png') }}" alt="Car Image">
                 <div class="car-details">
                     <h3>{{ car.maerke }} {{ car.model }}</h3>
@@ -44,8 +44,8 @@
             </div>
         {% endfor %}
     </div>
-{% else %}
+    {% else %}
     <p>No cars available for the specified criteria.</p>
-{% endif %}
+    {% endif %}
 </body>
 </html>
