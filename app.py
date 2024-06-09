@@ -317,7 +317,7 @@ def delete_subscription(abonnementid):
     try:
         db.session.execute(sql, {'abonnementid': abonnementid})
         db.session.commit()
-        return redirect(url_for('user_page'))
+        return redirect(url_for('user_details', kundeid=kundeid))
     except Exception as e:
         db.session.rollback()
         return f"There was an issue deleting the subscription: {str(e)}"
