@@ -1,5 +1,8 @@
 # DIS_Project_opgave_2024
 
+Groupe 17
+zqp504 - jhv542 - mld775
+
 To start of download the repository.
 when you have a copy of the repository you need to do the following:
 
