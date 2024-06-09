@@ -3,8 +3,7 @@ body {
     margin: 0;
     padding: 0;
     background-color: black;
-    color: rgb(0, 0, 0); /* Ensures text is readable against a black background */
-}
+    color: rgb(0, 0, 0);
 
 .container {
     width: 80%;
@@ -74,7 +73,7 @@ header nav ul li {
 
 header nav ul li a {
     text-decoration: none;
-    color: black; /* Ensure nav links are readable against the white background */
+    color: black;
     font-weight: bold;
 }
 

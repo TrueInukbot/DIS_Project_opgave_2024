@@ -14,7 +14,6 @@ app.debug = True
 
 db = SQLAlchemy(app)
 
-# Configure logging
 logging.basicConfig(level=logging.DEBUG)
 
 class Kunder(db.Model):
@@ -107,7 +106,6 @@ def search():
             flash(f'Invalid date format: {e}')
             return redirect(url_for('home'))
 
-    # If GET request or no cars found for the criteria, show all cars not currently on a subscription
     results = Biler.query.outerjoin(Abonnementer, Biler.bilid == Abonnementer.bilid).filter(
         Abonnementer.bilid == None
     ).all()
@@ -172,7 +170,6 @@ def user_page():
 
     search_term = request.args.get('search_term', '')
 
-    # Regex search in PostgreSQL
     pattern = f"%{search_term}%"
     customers = Kunder.query.filter(
         Kunder.fornavn.ilike(pattern) |
@@ -206,7 +203,6 @@ def book_car(bilid):
         if not all([fornavn, efternavn, adresse, email, telefon, start_date, end_date, prisprmaaned]):
             raise ValueError("All fields are required")
 
-        # Load the SQL scripts
         insert_kunde_path = os.path.join('sql', 'insert_kunde.sql')
         insert_abonnement_path = os.path.join('sql', 'insert_abonnement.sql')
 
@@ -234,7 +230,6 @@ def book_car(bilid):
         sql_kunde = text(sql_kunde_content)
         sql_abonnement = text(sql_abonnement_content)
 
-        # Insert the new customer and get the new customer ID
         result = db.session.execute(sql_kunde, {
             'fornavn': fornavn,
             'efternavn': efternavn,
@@ -244,7 +239,6 @@ def book_car(bilid):
         })
         new_kundeid = result.scalar()
 
-        # Insert the new subscription
         db.session.execute(sql_abonnement, {
             'kundeid': new_kundeid,
             'bilid': bilid,
@@ -272,14 +266,12 @@ def update_customer(kundeid):
     customer = Kunder.query.get_or_404(kundeid)
     subscriptions = Abonnementer.query.filter_by(kundeid=kundeid).all()
     if request.method == 'POST':
-        # Get form data
         fornavn = request.form['fornavn']
         efternavn = request.form['efternavn']
         adresse = request.form['adresse']
         email = request.form['email']
         telefon = request.form['telefon']
 
-        # Execute the SQL script
         sql = text(open('sql/update_user.sql').read())
         try:
             db.session.execute(sql, {
@@ -312,7 +304,7 @@ def delete_customer(kundeid):
 @app.route('/delete_subscription/<int:abonnementid>', methods=['POST'])
 def delete_subscription(abonnementid):
     subscription = Abonnementer.query.get_or_404(abonnementid)
-    kundeid = subscription.kundeid  # Retrieve the kundeid before deletion
+    kundeid = subscription.kundeid 
     sql = text(open('sql/delete_subscription.sql').read())
     try:
         db.session.execute(sql, {'abonnementid': abonnementid})
