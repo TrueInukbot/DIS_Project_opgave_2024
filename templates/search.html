@@ -13,7 +13,7 @@
             <form method="POST" action="{{ url_for('search') }}">
                 <select id="location" name="location" placeholder="Location">
                     <option value="" disabled selected>Location</option>
-                    <option value="Københavns Universitet" {% if request.form.get('location') == 'Københavns Universitet' %}selected{% endif %}>Københavns Universitet</option>
+                    <option value="Koebenhavns Universitet" {% if request.form.get('location') == 'Koebenhavns Universitet' %}selected{% endif %}>Københavns Universitet</option>
                     <option value="Syddansk Universitet" {% if request.form.get('location') == 'Syddansk Universitet' %}selected{% endif %}>Syddansk Universitet</option>
                     <option value="Aarhus Universitet" {% if request.form.get('location') == 'Aarhus Universitet' %}selected{% endif %}>Aarhus Universitet</option>
                     <option value="Roskilde Universitet" {% if request.form.get('location') == 'Roskilde Universitet' %}selected{% endif %}>Roskilde Universitet</option>
