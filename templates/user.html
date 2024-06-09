@@ -21,18 +21,18 @@
     <div class="container mt-5">
         <h2>Customer Search</h2>
         <form method="GET" action="{{ url_for('search_customers') }}">
-            <input type="text" name="query" placeholder="Search by name or email" class="form-control">
+            <input type="text" name="query" placeholder="Search by email" class="form-control">
             <button type="submit" class="btn btn-primary mt-2">Search</button>
         </form>
         {% if customers %}
             <h3 class="mt-5">Search Results</h3>
             <ul class="list-group">
                 {% for customer in customers %}
-                    <li class="list-group-item">
-                        <a href="{{ url_for('user_details', kundeid=customer.kundeid) }}" class="btn btn-link">{{ customer.fornavn }} {{ customer.efternavn }} - {{ customer.email }}</a>
-                    </li>
+                    <li class="list-group-item"><a href="{{ url_for('user_details', kundeid=customer.kundeid) }}">{{ customer.fornavn }} {{ customer.efternavn }} - {{ customer.email }}</a></li>
                 {% endfor %}
             </ul>
+        {% else %}
+            <p>No customers found matching the search criteria.</p>
         {% endif %}
     </div>
 </body>

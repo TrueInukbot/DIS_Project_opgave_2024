@@ -63,18 +63,12 @@ def search_customers():
     if 'username' not in session:
         return redirect(url_for('home'))
 
-    query = request.args.get('query', '')
+    query = request.args.get('query', '').strip()
     customers = []
     if query:
-        # Use regular expression for searching
-        customers = Kunder.query.filter(
-            or_(
-                Kunder.fornavn.op('~')(query),
-                Kunder.efternavn.op('~')(query),
-                Kunder.email.op('~')(query)
-            )
-        ).all()
-
+        email_pattern = r'^.*@.*\.[a-zA-Z]+$'
+        if re.match(email_pattern, query):
+            customers = Kunder.query.filter(Kunder.email.ilike(f'%{query}%')).all()
     return render_template('user.html', customers=customers)
 
 @app.route('/')
@@ -166,7 +160,6 @@ def login():
         session['username'] = username
         return redirect(url_for('user_page'))
     else:
-        flash('Invalid credentials')
         return redirect(url_for('home'))
 
 @app.route('/user')
