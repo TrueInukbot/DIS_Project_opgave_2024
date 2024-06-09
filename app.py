@@ -1,4 +1,5 @@
 import logging
+import os
 from datetime import datetime
 from sqlalchemy import or_, select, text
 from flask import Flask, render_template, request, redirect, url_for, session
@@ -69,6 +70,7 @@ def search_customers():
         email_pattern = r'^.*@.*\.[a-zA-Z]+$'
         if re.match(email_pattern, query):
             customers = Kunder.query.filter(Kunder.email.ilike(f'%{query}%')).all()
+
     return render_template('user.html', customers=customers)
 
 @app.route('/')
@@ -204,48 +206,121 @@ def book_car(bilid):
         if not all([fornavn, efternavn, adresse, email, telefon, start_date, end_date, prisprmaaned]):
             raise ValueError("All fields are required")
 
-        new_user = Kunder(fornavn=fornavn, efternavn=efternavn, adresse=adresse, email=email, telefon=telefon)
-        db.session.add(new_user)
-        db.session.commit()
+        # Load the SQL scripts
+        insert_kunde_path = os.path.join('sql', 'insert_kunde.sql')
+        insert_abonnement_path = os.path.join('sql', 'insert_abonnement.sql')
 
-        new_abonnement = Abonnementer(
-            kundeid=new_user.kundeid,
-            bilid=bilid,
-            startdato=datetime.strptime(start_date, '%Y-%m-%d').date(),
-            slutdato=datetime.strptime(end_date, '%Y-%m-%d').date(),
-            prisprmaaned=int(prisprmaaned)  # Ensure this matches the model definition
-        )
-        db.session.add(new_abonnement)
+        logging.debug(f'Checking if SQL files exist...')
+        if not os.path.exists(insert_kunde_path):
+            logging.error(f"The file {insert_kunde_path} does not exist.")
+            raise FileNotFoundError(f"The file {insert_kunde_path} does not exist.")
+        if not os.path.exists(insert_abonnement_path):
+            logging.error(f"The file {insert_abonnement_path} does not exist.")
+            raise FileNotFoundError(f"The file {insert_abonnement_path} does not exist.")
+
+        logging.debug(f'Reading SQL files...')
+        with open(insert_kunde_path, 'r') as file:
+            sql_kunde_content = file.read().strip()
+        with open(insert_abonnement_path, 'r') as file:
+            sql_abonnement_content = file.read().strip()
+
+        logging.debug(f'insert_kunde.sql content: {sql_kunde_content}')
+        logging.debug(f'insert_abonnement.sql content: {sql_abonnement_content}')
+
+        if not sql_kunde_content or not sql_abonnement_content:
+            logging.error("One of the SQL scripts is empty.")
+            raise ValueError("SQL script is empty.")
+
+        sql_kunde = text(sql_kunde_content)
+        sql_abonnement = text(sql_abonnement_content)
+
+        # Insert the new customer and get the new customer ID
+        result = db.session.execute(sql_kunde, {
+            'fornavn': fornavn,
+            'efternavn': efternavn,
+            'adresse': adresse,
+            'email': email,
+            'telefon': telefon
+        })
+        new_kundeid = result.scalar()
+
+        # Insert the new subscription
+        db.session.execute(sql_abonnement, {
+            'kundeid': new_kundeid,
+            'bilid': bilid,
+            'startdato': datetime.strptime(start_date, '%Y-%m-%d').date(),
+            'slutdato': datetime.strptime(end_date, '%Y-%m-%d').date(),
+            'prisprmaaned': int(prisprmaaned)
+        })
         db.session.commit()
 
         return redirect(url_for('home'))
     except Exception as e:
         logging.exception("An error occurred while booking the car.")
+        db.session.rollback()
         return redirect(url_for('home'))
-    
+
+
 @app.route('/user_details/<int:kundeid>', methods=['GET'])
 def user_details(kundeid):
     customer = Kunder.query.get_or_404(kundeid)
     subscriptions = Abonnementer.query.filter_by(kundeid=kundeid).all()
     return render_template('user_details.html', customer=customer, subscriptions=subscriptions)
 
-@app.route('/delete_customer/<int:kundeid>', methods=['POST'])
-def delete_customer(kundeid):
+@app.route('/update_customer/<int:kundeid>', methods=['GET', 'POST'])
+def update_customer(kundeid):
     customer = Kunder.query.get_or_404(kundeid)
     subscriptions = Abonnementer.query.filter_by(kundeid=kundeid).all()
-    for subscription in subscriptions:
-        db.session.delete(subscription)
-    db.session.delete(customer)
-    db.session.commit()
-    return redirect(url_for('user_page'))
+    if request.method == 'POST':
+        # Get form data
+        fornavn = request.form['fornavn']
+        efternavn = request.form['efternavn']
+        adresse = request.form['adresse']
+        email = request.form['email']
+        telefon = request.form['telefon']
+
+        # Execute the SQL script
+        sql = text(open('sql/update_user.sql').read())
+        try:
+            db.session.execute(sql, {
+                'kundeid': kundeid,
+                'fornavn': fornavn,
+                'efternavn': efternavn,
+                'adresse': adresse,
+                'email': email,
+                'telefon': telefon
+            })
+            db.session.commit()
+            return redirect(url_for('user_details', kundeid=kundeid))
+        except Exception as e:
+            db.session.rollback()
+            return f"There was an issue updating the customer: {str(e)}"
+    else:
+        return render_template('user_details.html', customer=customer, subscriptions=subscriptions)
+
+@app.route('/delete_customer/<int:kundeid>', methods=['POST'])
+def delete_customer(kundeid):
+    sql = text(open('sql/delete_user.sql').read())
+    try:
+        db.session.execute(sql, {'kundeid': kundeid})
+        db.session.commit()
+        return redirect(url_for('user_page'))
+    except Exception as e:
+        db.session.rollback()
+        return f"There was an issue deleting the customer: {str(e)}"
 
 @app.route('/delete_subscription/<int:abonnementid>', methods=['POST'])
 def delete_subscription(abonnementid):
     subscription = Abonnementer.query.get_or_404(abonnementid)
-    kundeid = subscription.kundeid
-    db.session.delete(subscription)
-    db.session.commit()
-    return redirect(url_for('user_details', kundeid=kundeid))
+    kundeid = subscription.kundeid  # Retrieve the kundeid before deletion
+    sql = text(open('sql/delete_subscription.sql').read())
+    try:
+        db.session.execute(sql, {'abonnementid': abonnementid})
+        db.session.commit()
+        return redirect(url_for('user_page'))
+    except Exception as e:
+        db.session.rollback()
+        return f"There was an issue deleting the subscription: {str(e)}"
     
 if __name__ == '__main__':
     app.run(debug=True)

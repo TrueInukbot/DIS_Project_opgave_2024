@@ -1,0 +1,1 @@
+DELETE FROM abonnementer WHERE abonnementid = :abonnementid;
