@@ -156,7 +156,7 @@ def car_details(bilid):
 def login():
     username = request.form['username']
     password = request.form['password']
-    if username == 'admin' and password == 'admin':
+    if username == 'admin' and password == '12345':
         session['username'] = username
         return redirect(url_for('user_page'))
     else:
